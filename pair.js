@@ -32,7 +32,7 @@ https://whatsapp.com/channel/0029VagJIAr3bbVBCpEkAM07
 *Yᴏᴜ-ᴛᴜʙᴇ ᴛᴜᴛᴏʀɪᴀʟꜱ* 🪄 
 https://youtube.com/@GlobalTechInfo
 
-*MEGA-MD--WHATSAPP* 🥀
+*STANY TZ I AM LEGEND V2* 🥀
 `;
 
 async function removeFile(FilePath) {
