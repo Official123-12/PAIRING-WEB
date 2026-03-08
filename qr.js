@@ -84,6 +84,12 @@ router.get('/', async (req, res) => {
     }
 
     async function initiateSession() {
+        // Clear previous timeout before starting new session
+        if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+            timeoutHandle = null;
+        }
+
         if (sessionCompleted || isCleaningUp) {
             console.log('⚠️ Session already completed or cleaning up');
             return;
@@ -105,6 +111,7 @@ router.get('/', async (req, res) => {
         try {
             const { version } = await fetchLatestBaileysVersion();
 
+            // End previous socket if exists (should be already ended by cleanup, but just in case)
             if (currentSocket) {
                 try {
                     currentSocket.ev.removeAllListeners();
@@ -224,6 +231,14 @@ router.get('/', async (req, res) => {
                     } else if (qrGenerated && !sessionCompleted) {
                         reconnectAttempts++;
                         console.log(`🔁 Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
+                        // Clean up old socket before reconnecting
+                        if (currentSocket) {
+                            try {
+                                currentSocket.ev.removeAllListeners();
+                                await currentSocket.end();
+                            } catch (e) {}
+                            currentSocket = null;
+                        }
                         await delay(2000);
                         await initiateSession();
                     } else {
