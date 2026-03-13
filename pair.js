@@ -12,7 +12,7 @@ import {
     fetchLatestBaileysVersion,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-import uploadToGist from './Gist.js'; // 🔁 
+import uploadToGist from './Gist.js'; // 🔁 Badilisha hapa
 
 const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -23,7 +23,7 @@ const MESSAGE = `
 ✅ SESSION GENERATED SUCCESSFULLY
 
 ⭐ Support the project by giving a star on GitHub:  
-https://github.com/Stanytz378/IAMLEGEND/fork
+https://github.com/Stanytz378/IAMLEGEND
 
 💭 Join Support Group:  
 https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y
