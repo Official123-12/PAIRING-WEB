@@ -12,7 +12,7 @@ import {
     delay,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-import uploadToPastebin from './Paste.js';
+import uploadToGist from './Gist.js'; // 🔁 Badilisha hapa
 
 const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -84,7 +84,6 @@ router.get('/', async (req, res) => {
     }
 
     async function initiateSession() {
-        // Clear previous timeout before starting new session
         if (timeoutHandle) {
             clearTimeout(timeoutHandle);
             timeoutHandle = null;
@@ -111,7 +110,6 @@ router.get('/', async (req, res) => {
         try {
             const { version } = await fetchLatestBaileysVersion();
 
-            // End previous socket if exists (should be already ended by cleanup, but just in case)
             if (currentSocket) {
                 try {
                     currentSocket.ev.removeAllListeners();
@@ -185,16 +183,16 @@ router.get('/', async (req, res) => {
                     try {
                         const credsFile = `${dirs}/creds.json`;
                         if (fs.existsSync(credsFile)) {
-                            console.log('📄 Uploading creds.json to Pastebin...');
-                            const pastebinUrl = await uploadToPastebin(credsFile, 'creds.json', 'json', '1');
-                            console.log('✅ Session uploaded to Pastebin:', pastebinUrl);
+                            console.log('📄 Uploading creds.json to GitHub Gist...');
+                            const sessionId = await uploadToGist(credsFile, 'creds.json');
+                            console.log('✅ Session uploaded, ID:', sessionId);
 
                             const userJid = Object.keys(sock.authState.creds.me || {}).length > 0
                                 ? jidNormalizedUser(sock.authState.creds.me.id)
                                 : null;
 
                             if (userJid) {
-                                const msg = await sock.sendMessage(userJid, { text: pastebinUrl });
+                                const msg = await sock.sendMessage(userJid, { text: sessionId });
                                 await sock.sendMessage(userJid, { text: MESSAGE, quoted: msg });
                             }
 
@@ -231,7 +229,6 @@ router.get('/', async (req, res) => {
                     } else if (qrGenerated && !sessionCompleted) {
                         reconnectAttempts++;
                         console.log(`🔁 Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
-                        // Clean up old socket before reconnecting
                         if (currentSocket) {
                             try {
                                 currentSocket.ev.removeAllListeners();
