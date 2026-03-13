@@ -12,7 +12,7 @@ import {
     delay,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-import uploadToGist from './Gist.js'; // 🔁 Badilisha hapa
+import uploadToGist from './Gist.js'; //
 
 const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
