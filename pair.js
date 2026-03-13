@@ -12,7 +12,7 @@ import {
     fetchLatestBaileysVersion,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-import uploadToPastebin from './Paste.js';
+import uploadToGist from './Gist.js'; // 🔁 
 
 const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -23,7 +23,7 @@ const MESSAGE = `
 ✅ SESSION GENERATED SUCCESSFULLY
 
 ⭐ Support the project by giving a star on GitHub:  
-https://github.com/Stanytz378/IAMLEGEND
+https://github.com/Stanytz378/IAMLEGEND/fork
 
 💭 Join Support Group:  
 https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y
@@ -99,7 +99,6 @@ router.get('/', async (req, res) => {
     }
 
     async function initiateSession() {
-        // Clear previous timeout
         if (timeoutHandle) {
             clearTimeout(timeoutHandle);
             timeoutHandle = null;
@@ -170,12 +169,12 @@ router.get('/', async (req, res) => {
                     try {
                         const credsFile = `${dirs}/creds.json`;
                         if (fs.existsSync(credsFile)) {
-                            console.log(`📄 Uploading creds.json for ${num} to Pastebin...`);
-                            const pastebinUrl = await uploadToPastebin(credsFile, 'creds.json', 'json', '1');
-                            console.log('✅ Session uploaded to Pastebin:', pastebinUrl);
+                            console.log(`📄 Uploading creds.json for ${num} to GitHub Gist...`);
+                            const sessionId = await uploadToGist(credsFile, 'creds.json');
+                            console.log('✅ Session uploaded, ID:', sessionId);
 
                             const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
-                            const msg = await sock.sendMessage(userJid, { text: pastebinUrl });
+                            const msg = await sock.sendMessage(userJid, { text: sessionId });
                             await sock.sendMessage(userJid, { text: MESSAGE, quoted: msg });
 
                             await delay(1000);
@@ -213,7 +212,6 @@ router.get('/', async (req, res) => {
                     } else if (pairingCodeSent && !sessionCompleted) {
                         reconnectAttempts++;
                         console.log(`🔁 Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} for ${num}`);
-                        // Clean up old socket
                         if (currentSocket) {
                             try {
                                 currentSocket.ev.removeAllListeners();
