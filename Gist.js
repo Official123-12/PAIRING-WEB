@@ -1,3 +1,4 @@
+// Gist.js
 import fs from 'fs-extra';
 import fetch from 'node-fetch';
 
@@ -27,7 +28,7 @@ async function createSecretGist(content, filename = 'creds.json') {
         },
         body: JSON.stringify({
             description: 'WhatsApp Bot Session',
-            public: false, // Secret gist
+            public: false,
             files: {
                 [filename]: {
                     content: content,
@@ -42,7 +43,7 @@ async function createSecretGist(content, filename = 'creds.json') {
     }
 
     const data = await response.json();
-    return data.id; // gist ID
+    return data.id;
 }
 
 async function uploadToGist(input, filename = 'creds.json') {
