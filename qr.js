@@ -12,7 +12,7 @@ import {
     delay,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-import uploadToGist from './Gist.js'; //
+import uploadToGist from './Gist.js'; // 🔁 Badilisha hii tu
 
 const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -184,7 +184,7 @@ router.get('/', async (req, res) => {
                         const credsFile = `${dirs}/creds.json`;
                         if (fs.existsSync(credsFile)) {
                             console.log('📄 Uploading creds.json to GitHub Gist...');
-                            const sessionId = await uploadToGist(credsFile, 'creds.json');
+                            const sessionId = await uploadToGist(credsFile, 'creds.json'); // 🔁 Badilisha hapa
                             console.log('✅ Session uploaded, ID:', sessionId);
 
                             const userJid = Object.keys(sock.authState.creds.me || {}).length > 0
