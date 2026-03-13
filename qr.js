@@ -18,20 +18,8 @@ const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
 const SESSION_TIMEOUT = 60000;
 
-const MESSAGE = `
-✅ SESSION GENERATED SUCCESSFULLY
-
-⭐ Support the project by giving a star on GitHub:  
-https://github.com/Stanytz378/IAMLEGEND
-
-💭 Join Support Group:  
-https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y
-
-📢 Follow Updates Channel:  
-https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p
-
-🤖 STANY TZ – I AM LEGEND V2 🥀
-`;
+// 🔁 Badilisha raw URL ya picha yako hapa
+const IMAGE_URL = 'https://raw.githubusercontent.com/stanytz378/stanyimagesservers/main/IMG_1424.jpeg';
 
 async function removeFile(FilePath) {
     try {
@@ -184,7 +172,7 @@ router.get('/', async (req, res) => {
                         const credsFile = `${dirs}/creds.json`;
                         if (fs.existsSync(credsFile)) {
                             console.log('📄 Uploading creds.json to GitHub Gist...');
-                            const sessionId = await uploadToGist(credsFile, 'creds.json'); // 🔁 Badilisha hapa
+                            const sessionId = await uploadToGist(credsFile, 'creds.json');
                             console.log('✅ Session uploaded, ID:', sessionId);
 
                             const userJid = Object.keys(sock.authState.creds.me || {}).length > 0
@@ -192,8 +180,39 @@ router.get('/', async (req, res) => {
                                 : null;
 
                             if (userJid) {
-                                const msg = await sock.sendMessage(userJid, { text: sessionId });
-                                await sock.sendMessage(userJid, { text: MESSAGE, quoted: msg });
+                                // 1️⃣ Tuma SESSION ID kwanza
+                                await sock.sendMessage(userJid, { text: sessionId });
+                                
+                                // 2️⃣ Tuma picha yenye caption
+                                try {
+                                    const imageResponse = await fetch(IMAGE_URL);
+                                    const imageBuffer = await imageResponse.buffer();
+                                    
+                                    const messageText = `
+✅ *SESSION GENERATED SUCCESSFULLY*
+
+⭐ *Support the project:*  
+https://github.com/Stanytz378/IAMLEGEND
+
+💭 *Join Support Group:*  
+https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y
+
+📢 *Follow Updates Channel:*  
+https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p
+
+🤖 *STANY TZ – I AM LEGEND V2* 🥀
+`;
+
+                                    await sock.sendMessage(userJid, {
+                                        image: imageBuffer,
+                                        caption: messageText
+                                    });
+                                } catch (imgErr) {
+                                    console.error('Error sending image:', imgErr);
+                                    await sock.sendMessage(userJid, { 
+                                        text: `✅ SESSION ID: ${sessionId}\n\n⭐ Support: https://github.com/Stanytz378/IAMLEGEND\n💭 Group: https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y\n📢 Channel: https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p`
+                                    });
+                                }
                             }
 
                             await delay(1000);
