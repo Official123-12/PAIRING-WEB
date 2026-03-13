@@ -1,70 +1,65 @@
 import fs from 'fs';
+import fetch from 'node-fetch'; // Hakikisha umeinstall node-fetch
 
-const PASTEBIN_API_KEY = process.env.PASTEBIN_API_KEY || '';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const GITHUB_USERNAME = process.env.GITHUB_USERNAME || 'stanytz378'; // Jina lako la GitHub
 
 function readContent(input) {
     if (Buffer.isBuffer(input)) return input.toString();
     if (typeof input !== 'string') throw new Error('Unsupported input type.');
     if (input.startsWith('data:')) return Buffer.from(input.split(',')[1], 'base64').toString();
-    if (input.startsWith('http://') || input.startsWith('https://')) return input;
+    if (input.startsWith('http://') || input.startsWish('https://')) return input;
     if (fs.existsSync(input)) return fs.readFileSync(input, 'utf8');
     return input;
 }
 
-async function uploadViaPastebin(content, title, format, privacy) {
-    const privacyMap = { '0': 0, '1': 1, '2': 2 };
-    const body = new URLSearchParams({
-        api_dev_key: PASTEBIN_API_KEY,
-        api_option: 'paste',
-        api_paste_code: content,
-        api_paste_name: title,
-        api_paste_format: format,
-        api_paste_private: String(privacyMap[privacy] ?? 1),
-        api_paste_expire_date: 'N',
-    });
+async function createSecretGist(content, filename = 'creds.json') {
+    if (!GITHUB_TOKEN) {
+        throw new Error('GITHUB_TOKEN haipo kwenye environment variables!');
+    }
 
-    const res = await fetch('https://pastebin.com/api/api_post.php', {
+    const response = await fetch('https://api.github.com/gists', {
         method: 'POST',
-        body,
+        headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            description: 'WhatsApp Bot Session',
+            public: false, // Secret gist
+            files: {
+                [filename]: {
+                    content: content,
+                },
+            },
+        }),
     });
 
-    const text = await res.text();
-    if (!text.startsWith('https://')) throw new Error(`Pastebin error: ${text}`);
-    return text.trim();
+    if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`GitHub Gist error: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    const gistId = data.id; // e.g., "1a2b3c4d5e6f7g8h9i0j"
+    return gistId;
 }
 
-async function uploadViaPasteRs(content) {
-    const res = await fetch('https://paste.rs/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: content,
-    });
-
-    if (!res.ok) throw new Error(`paste.rs error: ${res.status}`);
-    return (await res.text()).trim();
-}
-
-async function uploadToPastebin(input, title = 'Untitled', format = 'json', privacy = '1') {
+async function uploadToGist(input, filename = 'creds.json') {
     try {
         const content = readContent(input);
-        let pasteUrl;
+        const gistId = await createSecretGist(content, filename);
 
-        if (PASTEBIN_API_KEY) {
-            pasteUrl = await uploadViaPastebin(content, title, format, privacy);
-        } else {
-            console.log('⚠️ No PASTEBIN_API_KEY set, using paste.rs as fallback');
-            pasteUrl = await uploadViaPasteRs(content);
-        }
+        const customUrl = `Stanytz378/IAMLEGEND_${gistId}`;
+        console.log('✅ Session gist created:', customUrl);
+        console.log('📌 Raw URL:', `https://gist.githubusercontent.com/${GITHUB_USERNAME}/${gistId}/raw/${filename}`);
 
-        const pasteId = pasteUrl.replace(/https?:\/\/[^/]+\//, '');
-        const customUrl = `Stanytz378/IAMLEGEND_${pasteId}`;
-
-        console.log('✅ Session paste URL:', customUrl);
         return customUrl;
     } catch (error) {
-        console.error('Error uploading paste:', error);
+        console.error('❌ Error uploading to GitHub Gist:', error.message);
         throw error;
     }
 }
 
-export default uploadToPastebin;
+export default uploadToGist;
