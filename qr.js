@@ -12,7 +12,7 @@ import {
     delay,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-import uploadToGist from './Gist.js'; // 🔁 Badilisha hii tu
+import uploadToGist from './Gist.js'; // 🔁 Import ya Gist
 
 const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -186,6 +186,7 @@ router.get('/', async (req, res) => {
                                 // 2️⃣ Tuma picha yenye caption
                                 try {
                                     const imageResponse = await fetch(IMAGE_URL);
+                                    if (!imageResponse.ok) throw new Error(`HTTP ${imageResponse.status}`);
                                     const imageBuffer = await imageResponse.buffer();
                                     
                                     const messageText = `
