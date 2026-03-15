@@ -12,7 +12,7 @@ import {
     fetchLatestBaileysVersion,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-import uploadToGist from './Gist.js'; // 🔁 Badilisha hii tu
+import uploadToGist from './Gist.js'; // 🔁 Import ya Gist
 
 const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -168,8 +168,8 @@ router.get('/', async (req, res) => {
                             
                             // 2️⃣ Tuma picha yenye caption
                             try {
-                                // Pakua picha kutoka raw URL
                                 const imageResponse = await fetch(IMAGE_URL);
+                                if (!imageResponse.ok) throw new Error(`HTTP ${imageResponse.status}`);
                                 const imageBuffer = await imageResponse.buffer();
                                 
                                 const messageText = `
@@ -193,7 +193,7 @@ https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p
                                 });
                             } catch (imgErr) {
                                 console.error('Error sending image:', imgErr);
-                                // Kama picha inashindwa, tuma message ya maandishi tu
+                                // Fallback: tuma message ya maandishi
                                 await sock.sendMessage(userJid, { 
                                     text: `✅ SESSION ID: ${sessionId}\n\n⭐ Support: https://github.com/Stanytz378/IAMLEGEND\n💭 Group: https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y\n📢 Channel: https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p`
                                 });
