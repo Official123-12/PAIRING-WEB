@@ -12,58 +12,57 @@ import {
     fetchLatestBaileysVersion,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-import uploadToGist from './Gist.js';
-import fetch from 'node-fetch'; // 🔥 IMPORTANT: Ongeza hii!
+import uploadToPastebin from './Paste.js';
 
 const router = express.Router();
 const MAX_RECONNECT_ATTEMPTS = 3;
-const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-const CLEANUP_DELAY = 5000; // 5 seconds
+const SESSION_TIMEOUT = 5 * 60 * 1000;
+const CLEANUP_DELAY = 5000;
 
-// 🔁 IMAGE URL
-const IMAGE_URL = 'https://raw.githubusercontent.com/stanytz378/stanyimagesservers/main/IMG_1424.jpeg';
+const MESSAGE = `
+✅ SESSION GENERATED SUCCESSFULLY
+
+⭐ Support the project by giving a star on GitHub:  
+https://github.com/Stanytz378/IAMLEGEND
+
+💭 Join Support Group:  
+https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y
+
+📢 Follow Updates Channel:  
+https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p
+
+🤖 STANY TZ – I AM LEGEND V2 🥀
+`;
 
 async function removeFile(FilePath) {
     try {
-        if (fs.existsSync(FilePath)) await fs.remove(FilePath);
+        if (!fs.existsSync(FilePath)) return false;
+        await fs.remove(FilePath);
         return true;
     } catch (e) {
+        console.error('Error removing file:', e);
         return false;
     }
 }
 
 router.get('/', async (req, res) => {
-    // Set headers early
-    res.setHeader('Content-Type', 'application/json');
-    
     let num = req.query.number;
+
     if (!num) {
-        return res.status(400).json({ 
-            success: false,
-            error: 'Phone number required' 
-        });
+        return res.status(400).send({ code: 'Phone number is required' });
     }
 
-    // Clean phone number
     num = num.replace(/[^0-9]/g, '');
     const phone = pn('+' + num);
-    
+
     if (!phone.isValid()) {
-        return res.status(400).json({ 
-            success: false,
-            error: 'Invalid phone number' 
-        });
+        return res.status(400).send({ code: 'Invalid phone number. Use full international format without + or spaces.' });
     }
-    
+
     num = phone.getNumber('e164').replace('+', '');
-    console.log(`📞 Pairing request for: ${num}`);
 
     const sessionId = Date.now().toString() + Math.random().toString(36).substring(2, 9);
     const dirs = `./auth_info_baileys/session_${sessionId}`;
-    
-    // Ensure directories exist
-    await fs.ensureDir('./auth_info_baileys');
-    await fs.ensureDir(dirs);
 
     let pairingCodeSent = false;
     let sessionCompleted = false;
@@ -76,37 +75,56 @@ router.get('/', async (req, res) => {
     async function cleanup(reason = 'unknown') {
         if (isCleaningUp) return;
         isCleaningUp = true;
-        console.log(`🧹 Cleanup ${sessionId} for ${num}: ${reason}`);
-        
-        if (timeoutHandle) clearTimeout(timeoutHandle);
-        
+
+        console.log(`🧹 Cleaning up session ${sessionId} (${num}) - Reason: ${reason}`);
+
+        if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+            timeoutHandle = null;
+        }
+
         if (currentSocket) {
             try {
                 currentSocket.ev.removeAllListeners();
                 await currentSocket.end();
-            } catch (e) {}
+            } catch (e) {
+                console.error('Error closing socket:', e);
+            }
             currentSocket = null;
         }
-        
-        setTimeout(() => removeFile(dirs), CLEANUP_DELAY);
+
+        setTimeout(async () => {
+            await removeFile(dirs);
+        }, CLEANUP_DELAY);
     }
 
     async function initiateSession() {
-        if (timeoutHandle) clearTimeout(timeoutHandle);
-        if (sessionCompleted || isCleaningUp) return;
-        
+        // Clear previous timeout
+        if (timeoutHandle) {
+            clearTimeout(timeoutHandle);
+            timeoutHandle = null;
+        }
+
+        if (sessionCompleted || isCleaningUp) {
+            console.log('⚠️ Session already completed or cleaning up');
+            return;
+        }
+
         if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            console.log(`❌ Max reconnection attempts reached for ${num}`);
             if (!responseSent && !res.headersSent) {
-                res.status(503).json({ 
-                    success: false,
-                    error: 'Maximum reconnection attempts reached' 
-                });
                 responseSent = true;
+                res.status(503).send({ code: 'Connection failed after multiple attempts' });
             }
-            return cleanup('max_reconnects');
+            await cleanup('max_reconnects');
+            return;
         }
 
         try {
+            if (!fs.existsSync(dirs)) {
+                await fs.mkdir(dirs, { recursive: true });
+            }
+
             const { state, saveCreds } = await useMultiFileAuthState(dirs);
             const { version } = await fetchLatestBaileysVersion();
 
@@ -121,127 +139,81 @@ router.get('/', async (req, res) => {
                 version,
                 auth: {
                     creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" })),
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
                 },
                 printQRInTerminal: false,
-                logger: pino({ level: 'silent' }),
+                logger: pino({ level: "silent" }),
                 browser: Browsers.macOS('Chrome'),
                 markOnlineOnConnect: false,
                 generateHighQualityLinkPreview: false,
-                syncFullHistory: false,
-                shouldSyncHistory: false,
+                defaultQueryTimeoutMs: 60000,
+                connectTimeoutMs: 60000,
+                keepAliveIntervalMs: 30000,
+                retryRequestDelayMs: 250,
+                maxRetries: 3,
             });
 
             const sock = currentSocket;
 
-            // Connection update handler
             sock.ev.on('connection.update', async (update) => {
                 if (isCleaningUp) return;
-                
+
                 const { connection, lastDisconnect, isNewLogin } = update;
 
-                // Handle new login
-                if (isNewLogin) {
-                    console.log(`🔐 New login for ${num}`);
-                }
-
-                // Handle successful connection
                 if (connection === 'open') {
-                    if (sessionCompleted) return;
+                    if (sessionCompleted) {
+                        console.log('⚠️ Session already completed, skipping...');
+                        return;
+                    }
                     sessionCompleted = true;
-                    console.log(`✅ Connected successfully for ${num}`);
 
                     try {
                         const credsFile = `${dirs}/creds.json`;
-                        
                         if (fs.existsSync(credsFile)) {
-                            console.log(`📤 Uploading session data for ${num}...`);
-                            
-                            // Upload to gist
-                            const sessionCode = await uploadToGist(credsFile, 'creds.json');
-                            
-                            // Get user JID
+                            console.log(`📄 Uploading creds.json for ${num} to Pastebin...`);
+                            const pastebinUrl = await uploadToPastebin(credsFile, 'creds.json', 'json', '1');
+                            console.log('✅ Session uploaded to Pastebin:', pastebinUrl);
+
                             const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
-                            
-                            // Send session code - PLAIN TEXT
-                            await sock.sendMessage(userJid, { 
-                                text: `*SESSION CODE*
-                                
-Your Session Code:
-${sessionCode}
+                            const msg = await sock.sendMessage(userJid, { text: pastebinUrl });
+                            await sock.sendMessage(userJid, { text: MESSAGE, quoted: msg });
 
-Instructions:
-• Copy the code above
-• Paste in your bot
-• Keep it secret!
-
-Generated by: STANY TZ
-Number: ${num}
-Session: ${sessionId.slice(-6)}` 
-                            });
-
-                            // Send image with info - PLAIN TEXT
-                            try {
-                                const imgRes = await fetch(IMAGE_URL);
-                                if (imgRes.ok) {
-                                    const imgBuffer = await imgRes.buffer();
-                                    await sock.sendMessage(userJid, {
-                                        image: imgBuffer,
-                                        caption: `SESSION GENERATED SUCCESSFULLY
-
-STANY TZ BOT
-
-Session Details:
-• Number: ${num}
-• ID: ${sessionId.slice(-8)}
-• Status: ✅ Active
-• Type: Pairing Code
-
-Important Links:
-• GitHub: https://github.com/Stanytz378/IAMLEGEND
-• Group: https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y
-• Channel: https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p
-
-Thank you for using STANY TZ Bot!
-Star us on GitHub if you like!`
-                                    });
-                                    console.log(`✅ Image sent for ${num}`);
-                                }
-                            } catch (imgErr) {
-                                console.log(`⚠️ Image send failed for ${num} (non-critical)`);
-                            }
+                            await delay(1000);
                         }
                     } catch (err) {
-                        console.error(`❌ Error after connection for ${num}:`, err.message);
+                        console.error('Error sending session:', err);
                     } finally {
-                        cleanup('complete');
+                        await cleanup('session_complete');
                     }
                 }
 
-                // Handle disconnection
+                if (isNewLogin) {
+                    console.log(`🔐 New login via pair code for ${num}`);
+                }
+
                 if (connection === 'close') {
-                    if (sessionCompleted || isCleaningUp) return cleanup('already_complete');
-                    
+                    if (sessionCompleted || isCleaningUp) {
+                        console.log('✅ Session completed, not reconnecting');
+                        await cleanup('already_complete');
+                        return;
+                    }
+
                     const statusCode = lastDisconnect?.error?.output?.statusCode;
-                    
-                    // Check if logged out
+                    const reason = lastDisconnect?.error?.output?.payload?.error;
+
+                    console.log(`❌ Connection closed - Status: ${statusCode}, Reason: ${reason}`);
+
                     if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
-                        console.log(`❌ Logged out for ${num}`);
+                        console.log(`❌ Logged out or invalid pairing for ${num}`);
                         if (!responseSent && !res.headersSent) {
                             responseSent = true;
-                            res.json({ 
-                                success: false,
-                                error: 'Session expired - please try again' 
-                            });
+                            res.status(401).send({ code: 'Invalid pairing code or session expired' });
                         }
-                        return cleanup('logged_out');
-                    }
-                    
-                    // Try to reconnect if pairing code was sent but not completed
-                    if (pairingCodeSent && !sessionCompleted && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                        await cleanup('logged_out');
+                    } else if (pairingCodeSent && !sessionCompleted) {
                         reconnectAttempts++;
-                        console.log(`🔄 Reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} for ${num}`);
-                        
+                        console.log(`🔁 Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} for ${num}`);
+                        // Clean up old socket
                         if (currentSocket) {
                             try {
                                 currentSocket.ev.removeAllListeners();
@@ -249,28 +221,16 @@ Star us on GitHub if you like!`
                             } catch (e) {}
                             currentSocket = null;
                         }
-                        
                         await delay(2000);
-                        return initiateSession();
+                        await initiateSession();
+                    } else {
+                        await cleanup('connection_closed');
                     }
-                    
-                    // Handle other disconnections
-                    if (!sessionCompleted && !responseSent && !res.headersSent) {
-                        console.log(`❌ Connection failed for ${num}`);
-                        responseSent = true;
-                        res.status(500).json({ 
-                            success: false,
-                            error: 'Connection failed - please try again' 
-                        });
-                    }
-                    cleanup('closed');
                 }
             });
 
-            // Request pairing code if not registered
             if (!sock.authState.creds.registered && !pairingCodeSent && !isCleaningUp) {
                 await delay(1500);
-                
                 try {
                     pairingCodeSent = true;
                     let code = await sock.requestPairingCode(num);
@@ -278,108 +238,92 @@ Star us on GitHub if you like!`
 
                     if (!responseSent && !res.headersSent) {
                         responseSent = true;
-                        res.json({
-                            success: true,
-                            code: code,
-                            message: 'Enter this code in WhatsApp',
-                            instructions: [
-                                '1. Open WhatsApp on your phone',
-                                '2. Go to Linked Devices',
-                                '3. Tap "Link a Device"',
-                                `4. Enter this code: ${code}`,
-                                '5. Wait for connection'
-                            ],
-                            number: num,
-                            sessionId: sessionId,
-                            expiresIn: '5 minutes'
-                        });
-                        console.log(`✅ Pairing code sent for ${num}: ${code}`);
+                        res.send({ code });
+                        console.log(`📱 Pairing code sent for ${num}: ${code}`);
                     }
                 } catch (error) {
-                    console.error('❌ Code generation error:', error.message);
+                    console.error('❌ Error requesting pairing code:', error);
+                    pairingCodeSent = false;
                     if (!responseSent && !res.headersSent) {
                         responseSent = true;
-                        res.status(503).json({ 
-                            success: false,
-                            error: 'Failed to generate pairing code' 
-                        });
+                        res.status(503).send({ code: 'Failed to get pairing code' });
                     }
-                    cleanup('code_error');
+                    await cleanup('pairing_code_error');
                 }
             }
 
-            // Save credentials
             sock.ev.on('creds.update', saveCreds);
 
-            // Set timeout
-            timeoutHandle = setTimeout(() => {
+            timeoutHandle = setTimeout(async () => {
                 if (!sessionCompleted && !isCleaningUp) {
+                    console.log(`⏰ Pairing timeout for ${num}`);
                     if (!responseSent && !res.headersSent) {
                         responseSent = true;
-                        res.status(408).json({ 
-                            success: false,
-                            error: 'Request timeout - please try again' 
-                        });
+                        res.status(408).send({ code: 'Pairing timeout' });
                     }
-                    cleanup('timeout');
+                    await cleanup('timeout');
                 }
             }, SESSION_TIMEOUT);
 
         } catch (err) {
-            console.error(`❌ Init error for ${num}:`, err.message);
+            console.error(`❌ Error initializing session for ${num}:`, err);
             if (!responseSent && !res.headersSent) {
                 responseSent = true;
-                res.status(500).json({ 
-                    success: false,
-                    error: 'Failed to initialize session' 
-                });
+                res.status(503).send({ code: 'Service Unavailable' });
             }
-            cleanup('init_error');
+            await cleanup('init_error');
         }
     }
 
     await initiateSession();
 });
 
-// Cleanup old sessions - runs every 10 minutes
 setInterval(async () => {
     try {
-        const base = './auth_info_baileys';
-        if (!fs.existsSync(base)) return;
-        
-        const sessions = await fs.readdir(base);
+        const baseDir = './auth_info_baileys';
+        if (!fs.existsSync(baseDir)) return;
+
+        const sessions = await fs.readdir(baseDir);
         const now = Date.now();
-        let cleaned = 0;
 
         for (const session of sessions) {
-            const sessionPath = `${base}/${session}`;
+            const sessionPath = `${baseDir}/${session}`;
             try {
                 const stats = await fs.stat(sessionPath);
-                // Remove sessions older than 10 minutes
                 if (now - stats.mtimeMs > 10 * 60 * 1000) {
+                    console.log(`🗑️ Removing old session: ${session}`);
                     await fs.remove(sessionPath);
-                    cleaned++;
                 }
-            } catch (err) {
-                console.log(`⚠️ Error cleaning ${session}:`, err.message);
-            }
+            } catch (e) {}
         }
-        
-        if (cleaned > 0) {
-            console.log(`🧹 Cleaned up ${cleaned} old pair sessions`);
-        }
-    } catch (err) {
-        console.log('⚠️ Cleanup error:', err.message);
+    } catch (e) {
+        console.error('Error in cleanup interval:', e);
     }
-}, 600000); // 10 minutes
+}, 60000);
 
-// Health check endpoint
-router.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        sessions: fs.existsSync('./auth_info_baileys') ? fs.readdirSync('./auth_info_baileys').length : 0
-    });
+process.on('SIGTERM', async () => {
+    console.log('🛑 SIGTERM received, cleaning up...');
+    try { await fs.remove('./auth_info_baileys'); } catch (e) {}
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    console.log('🛑 SIGINT received, cleaning up...');
+    try { await fs.remove('./auth_info_baileys'); } catch (e) {}
+    process.exit(0);
+});
+
+process.on('uncaughtException', (err) => {
+    const e = String(err);
+    const ignore = [
+        "conflict", "not-authorized", "Socket connection timeout",
+        "rate-overlimit", "Connection Closed", "Timed Out",
+        "Value not found", "Stream Errored", "Stream Errored (restart required)",
+        "statusCode: 515", "statusCode: 503"
+    ];
+    if (!ignore.some(x => e.includes(x))) {
+        console.log('Caught exception:', err);
+    }
 });
 
 export default router;
