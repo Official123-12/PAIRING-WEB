@@ -102,6 +102,8 @@ router.get('/', async (req, res) => {
                 browser: Browsers.macOS('Chrome'),
                 markOnlineOnConnect: false,
                 generateHighQualityLinkPreview: false,
+                syncFullHistory: false,
+                shouldSyncHistory: false,
             });
 
             const sock = currentSocket;
