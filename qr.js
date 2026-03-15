@@ -92,6 +92,8 @@ router.get('/', async (req, res) => {
                 printQRInTerminal: false,
                 markOnlineOnConnect: false,
                 generateHighQualityLinkPreview: false,
+                syncFullHistory: false,
+                shouldSyncHistory: false,
             });
 
             const sock = currentSocket;
