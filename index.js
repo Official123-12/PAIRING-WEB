@@ -36,12 +36,35 @@ app.use('/', async (req, res) => {
     res.sendFile(path.join(__dirname, 'main.html'));
 });
 
-// Start server - LISTEN ON ALL INTERFACES (muhimu kwa Render)
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ YouTube: @StanleyTechnology`);
-    console.log(`✅ GitHub: @Stanytz378`);
-    console.log(`✅ Server running on port ${PORT}`);
-    console.log(`✅ http://localhost:${PORT}`);
+// Handle termination signals - IMPORTANT FOR RENDER
+process.on('SIGTERM', () => {
+    console.log('📢 SIGTERM received, closing gracefully...');
+    server.close(() => {
+        console.log('✅ Process terminated gracefully');
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('📢 SIGINT received, closing gracefully...');
+    server.close(() => {
+        console.log('✅ Process terminated gracefully');
+    });
+});
+
+// Start server - LISTEN ON ALL INTERFACES
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log('✅ YouTube: @StanleyTechnology');
+    console.log('✅ GitHub: @Stanytz378');
+    console.log('=================================');
+    console.log(`✅ Server running on PORT: ${PORT}`);
+    console.log(`✅ Render URL: https://your-app-name.onrender.com`);
+    console.log(`✅ Local URL: http://localhost:${PORT}`);
+    console.log('=================================');
+});
+
+// Handle server errors
+server.on('error', (error) => {
+    console.error('❌ Server error:', error);
 });
 
 export default app;
