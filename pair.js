@@ -99,12 +99,6 @@ router.get('/', async (req, res) => {
     }
 
     async function initiateSession() {
-        // Clear previous timeout
-        if (timeoutHandle) {
-            clearTimeout(timeoutHandle);
-            timeoutHandle = null;
-        }
-
         if (sessionCompleted || isCleaningUp) {
             console.log('⚠️ Session already completed or cleaning up');
             return;
@@ -213,14 +207,6 @@ router.get('/', async (req, res) => {
                     } else if (pairingCodeSent && !sessionCompleted) {
                         reconnectAttempts++;
                         console.log(`🔁 Reconnection attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} for ${num}`);
-                        // Clean up old socket
-                        if (currentSocket) {
-                            try {
-                                currentSocket.ev.removeAllListeners();
-                                await currentSocket.end();
-                            } catch (e) {}
-                            currentSocket = null;
-                        }
                         await delay(2000);
                         await initiateSession();
                     } else {
