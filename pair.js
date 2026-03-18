@@ -23,7 +23,7 @@ const MESSAGE = `
 ✅ SESSION GENERATED SUCCESSFULLY
 
 ⭐ Support the project by giving a star on GitHub:  
-https://github.com/Stanytz378/IAMLEGEND
+https://github.com/stanytz378/iamlegendv2
 
 💭 Join Support Group:  
 https://chat.whatsapp.com/J19JASXoaK0GVSoRvShr4Y
