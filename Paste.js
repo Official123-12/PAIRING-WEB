@@ -1,7 +1,27 @@
+/*****************************************************************************
+ *                                                                           *
+ *                     Developed By STANY TZ                                 *
+ *                                                                           *
+ *  🌐  GitHub   : https://github.com/Stanytz378/iamlegendv2                 *
+ *  ▶️  YouTube  : https://youtube.com/@STANYTZ                              *
+ *  💬  WhatsApp : https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p     *
+ *                                                                           *
+ *    © 2026 STANY TZ. All rights reserved.                                 *
+ *                                                                           *
+ *    Description: Upload session credentials to Pastebin or paste.rs       *
+ *                 with automatic fallback when Pastebin limit is reached.  *
+ *                                                                           *
+ ***************************************************************************/
+
 import fs from 'fs';
 
 const PASTEBIN_API_KEY = process.env.PASTEBIN_API_KEY || '';
 
+/**
+ * Reads content from various input types:
+ * - Buffer → string
+ * - string → if it's a data URL, decode; if file path, read file; else return as is
+ */
 function readContent(input) {
     if (Buffer.isBuffer(input)) return input.toString();
     if (typeof input !== 'string') throw new Error('Unsupported input type.');
@@ -11,6 +31,9 @@ function readContent(input) {
     return input;
 }
 
+/**
+ * Upload content to Pastebin
+ */
 async function uploadViaPastebin(content, title, format, privacy) {
     const privacyMap = { '0': 0, '1': 1, '2': 2 };
     const body = new URLSearchParams({
@@ -33,6 +56,9 @@ async function uploadViaPastebin(content, title, format, privacy) {
     return text.trim();
 }
 
+/**
+ * Upload content to paste.rs (no API key needed)
+ */
 async function uploadViaPasteRs(content) {
     const res = await fetch('https://paste.rs/', {
         method: 'POST',
@@ -44,27 +70,35 @@ async function uploadViaPasteRs(content) {
     return (await res.text()).trim();
 }
 
-async function uploadToPastebin(input, title = 'Untitled', format = 'json', privacy = '1') {
-    try {
-        const content = readContent(input);
-        let pasteUrl;
+/**
+ * Upload session data to Pastebin (or paste.rs as fallback) and return custom session ID.
+ * Format: Stanytz378/iamlegendv2_<pasteId>
+ */
+async function uploadSessionToPastebin(input, title = 'iamlegendv2 Session', format = 'json', privacy = '1') {
+    const content = readContent(input);
+    let pasteUrl;
 
-        if (PASTEBIN_API_KEY) {
+    // Try Pastebin first if API key exists
+    if (PASTEBIN_API_KEY) {
+        try {
             pasteUrl = await uploadViaPastebin(content, title, format, privacy);
-        } else {
-            console.log('⚠️ No PASTEBIN_API_KEY set, using paste.rs as fallback');
+            console.log('✅ Session uploaded to Pastebin');
+        } catch (err) {
+            console.log(`⚠️ Pastebin upload failed: ${err.message}. Falling back to paste.rs...`);
+            // fallback to paste.rs
             pasteUrl = await uploadViaPasteRs(content);
+            console.log('✅ Session uploaded to paste.rs as fallback');
         }
-
-        const pasteId = pasteUrl.replace(/https?:\/\/[^/]+\//, '');
-        const customUrl = `Stanytz378/iamlegendv2_${pasteId}`;
-
-        console.log('✅ Session paste URL:', customUrl);
-        return customUrl;
-    } catch (error) {
-        console.error('Error uploading paste:', error);
-        throw error;
+    } else {
+        // No API key, use paste.rs directly
+        console.log('⚠️ No PASTEBIN_API_KEY set, using paste.rs');
+        pasteUrl = await uploadViaPasteRs(content);
     }
+
+    const pasteId = pasteUrl.replace(/https?:\/\/[^/]+\//, '');
+    const customId = `Stanytz378/iamlegendv2_${pasteId}`;
+    console.log('✅ Session ID:', customId);
+    return customId;
 }
 
-export default uploadToPastebin;
+export default uploadSessionToPastebin;
