@@ -84,13 +84,3 @@ YOU CAN DEPLOY IT ON ANY CLOUD PLATFORM e.g `HEROKU` `RENDER` `KOYEB` etc.
 Note: Make Sure Put PASTEBIN_API_KEY in environment variables ( Required In Paste.js ) Before Running/Deploying The API.
 
 ## OTHER PROJECTS:
-
-- [MEGA SESSION](https://github.com/GlobalTechInfo/WEB-PAIR-QR)
-- [WHATSAPP BOT](https://github.com/GlobalTechInfo/MEGA-AI)
-- [TELEGRAM BOT](https://github.com/GlobalTechInfo/TELEGRAM-AI#readme)
-
-
-
-| [![Qasim Ali](https://github.com/GlobalTechInfo.png?size=100)](https://github.com/GlobalTechInfo) |
-| --- |
-| [Qasim Ali](https://github.com/GlobalTechInfo) |
